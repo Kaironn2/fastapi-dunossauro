@@ -1,8 +1,12 @@
 from http import HTTPStatus
 
 from fastapi import FastAPI, HTTPException
+from sqlalchemy import create_engine, select
+from sqlalchemy.orm import Session
 
+from src.models import User
 from src.schemas import RootSchema, UserDb, UserPublic, UserPublicList, UserSchema
+from src.settings import Settings
 
 app = FastAPI()
 database = []
@@ -15,9 +19,18 @@ def read_root():
 
 @app.post('/users/', status_code=HTTPStatus.CREATED, response_model=UserPublic)
 def create_user(user: UserSchema):
-    user_with_id = UserDb(**user.model_dump(), id=(len(database) + 1))
-    database.append(user_with_id)
-    return user_with_id
+    engine = create_engine(Settings().DATABASE_URL)
+
+    with Session(engine) as session:
+        db_user = session.scalar(
+            select(User).where((User.username == user.username) | (User.email == user.email))
+        )
+
+        if db_user:
+            if db_user.username == user.username:
+                ...
+            elif db_user.email == user.email:
+                ...
 
 
 @app.get('/users/', status_code=HTTPStatus.OK, response_model=UserPublicList)
